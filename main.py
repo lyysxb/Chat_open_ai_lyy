@@ -24,9 +24,9 @@ from langchain.vectorstores import Chroma
 import json
 from Chat_open_ai.update_embedding import first_encode,update_encode
 
-os.environ["OPENAI_API_KEY"] = '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'
+os.environ["OPENAI_API_KEY"] = 'YOUR_OPENAI_KEY'
 user = "lyy"
-api_key = "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"
+api_key = "YOUR_OPENAI_KEY"
 def load_all_courses(solidity_root):
   loader = DirectoryLoader(solidity_root,glob="*/*/*.txt")#,glob=**/*.txt
   docs = loader.load()
@@ -190,7 +190,7 @@ while True:
     else:
       os.mkdir(f"./{user}_query_storage")
       print("正在为用户创建问答向量数据库,并加载所有query")
-      first_encode(f"./{user}/{user}.jsonl",'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',user)
+      first_encode(f"./{user}/{user}.jsonl",api_key,user)
   if int(score) < 7:
     print("本次得分过低，将从数据库历史查找相似问题")
     if os.path.exists(f"././{user}/{user}.jsonl"):

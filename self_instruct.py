@@ -22,7 +22,7 @@ from langchain.vectorstores import Chroma
 import json
 from tqdm import tqdm
 
-os.environ["OPENAI_API_KEY"] = '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'
+os.environ["OPENAI_API_KEY"] = "YOUR_OPENAI_KEY"
 f_r = open("E:\games\Chat_open_ai\prompt.txt","r",encoding = "utf-8")
 f_w = open(r"E:\games\Chat_open_ai\train.txt","a+",encoding = "utf-8")
 chat = ChatOpenAI(temperature=0)

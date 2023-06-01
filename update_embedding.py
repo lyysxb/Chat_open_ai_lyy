@@ -65,15 +65,15 @@ def update_encode(query,id,score,key,user):
     )
     print("载入成功！")
     # print(collection.get(ids = ["4", "5", "6"]))
-# first_encode("E:\games\Chat_open_ai\lyy\lyy.jsonl",'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',"lyy")
-# update_encode("你好啊",12,8,'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',"lyy")
+# first_encode("E:\games\Chat_open_ai\lyy\lyy.jsonl",YOUR_OPENAI_KEY,"lyy")
+# update_encode("你好啊",12,8,'YOUR_OPENAI_KEY',"lyy")
 # user = "lyy"
 # chroma_client = chromadb.Client(Settings(
 #         chroma_db_impl = "duckdb+parquet",
 #         persist_directory=f"./{user}_query_storage"  # Optional, defaults to .chromadb/ in the current directory
 #     ))
 # collection = chroma_client.get_collection(name = user + "collection")
-# openai.api_key =  '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'
+# openai.api_key =  YOUR_OPENAI_KEY
 # query_embedding =  openai.Embedding.create(input = "你好啊", model="text-similarity-ada-001")['data'][0]['embedding']
 # results = collection.query(
 #       query_embeddings = [query_embedding],
