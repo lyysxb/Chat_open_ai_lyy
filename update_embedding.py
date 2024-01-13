@@ -1,22 +1,27 @@
 import os
-import faiss
+# import faiss
 import json
 import openai
 import chromadb
 from chromadb.config import Settings
+from langchain.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
 
 
 def first_encode(path,key,user):
+    open_embeddings = OpenAIEmbeddings()
+
+
     openai.api_key = key
     # if os.path.exists(f"./{user}_query_storage"):
     #     print("用户问答向量数据库已存在")
     # else:
     #     os.mkdir(f"./{user}_query_storage")
     #     print("正在为用户创建问答向量数据库")
-    chroma_client = chromadb.Client(Settings(
-        chroma_db_impl="duckdb+parquet",
-        persist_directory=f"./{user}_query_storage/"  # Optional, defaults to .chromadb/ in the current directory
-    ))
+    chroma_client = chromadb.PersistentClient(path=f"./{user}_query_storage/")
+    # chroma_client = chromadb.EphemeralClient(Settings(
+    #     chroma_db_impl="duckdb+parquet",
+    #     persist_directory=f"./{user}_query_storage/"  # Optional, defaults to .chromadb/ in the current directory
+    # ))
     try:
         collection = chroma_client.create_collection(name=user + "collection")
     except ValueError:
@@ -35,7 +40,7 @@ def first_encode(path,key,user):
         ids.append(int(data["id"]))
     print(f"一共有{len(question_history)}正在被载入")
     for i in range(len(question_history)):
-        embedding = openai.Embedding.create(input = question_history, model = "text-similarity-ada-001")['data'][i]['embedding']
+        embedding = open_embeddings.embed_query(question_history[i])
         embeddings.append(embedding)
     # print(embeddings)
     collection.add(
@@ -48,13 +53,14 @@ def first_encode(path,key,user):
     # print(collection.get(ids = ["4", "5", "6"]))
 
 def update_encode(query,id,score,key,user):
+    # hf = HuggingFaceEmbeddings(model_name="'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'",
+    #                            model_kwargs={'device': "cuda"})
     openai.api_key = key
-    chroma_client = chromadb.Client(Settings(
-        chroma_db_impl = "duckdb+parquet",
-        persist_directory = f"./{user}_query_storage/"  # Optional, defaults to .chromadb/ in the current directory
-    ))
+    chroma_client = chromadb.PersistentClient(path=f"./{user}_query_storage/")
     collection = chroma_client.get_collection(name = user + "collection")
-    embedding = openai.Embedding.create(input = query, model="text-similarity-ada-001")['data'][0]['embedding']
+    embeddings = OpenAIEmbeddings()
+    embedding = embeddings.embed_query(query)
+    # embedding = openai.embeddings.create(input = query, model="text-embedding-ada-002")['data'][0].embedding#text-similarity-ada-001	text-embedding-ada-002
     print("一条query正在被载入")
     # print(collection.get(ids=["4", "5", "6"]))
     collection.add(

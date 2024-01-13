@@ -1,32 +1,41 @@
+import matplotlib as mpl
+mpl.use('TkAgg')
+
 import chromadb
 from chromadb.config import Settings
-from langchain.document_loaders import DirectoryLoader
+from langchain_community.document_loaders import DirectoryLoader
 from langchain.chains.conversation.base import ConversationChain
 from langchain.chains import LLMChain
 import os
 import re
+import gradio
 import openai
 from langchain.prompts import PromptTemplate
-from langchain.document_loaders import YoutubeLoader
+# from langchain.document_loaders import YoutubeLoader
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.vectorstores import Chroma
+# from langchain.vectorstores import Chroma
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains import ChatVectorDBChain, ConversationalRetrievalChain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
 from langchain.prompts.chat import (
   ChatPromptTemplate,
   SystemMessagePromptTemplate,
   HumanMessagePromptTemplate
 )
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
+from langchain_community.vectorstores import Chroma
 import json
 from Chat_open_ai.update_embedding import first_encode,update_encode
-
-os.environ["OPENAI_API_KEY"] = 'YOUR_OPENAI_KEY'
+from langchain.chains import ConversationalRetrievalChain
+# from langchain.vectorstores import Chroma
+# from langchain.embeddings.openai import OpenAIEmbeddings
+os.environ["OPENAI_API_KEY"] = 'your_key'
 user = "lyy"
-api_key = "YOUR_OPENAI_KEY"
+api_key = "your_key"
 def load_all_courses(solidity_root):
   loader = DirectoryLoader(solidity_root,glob="*/*/*.txt")#,glob=**/*.txt
   docs = loader.load()
@@ -98,7 +107,10 @@ prompt = ChatPromptTemplate.from_messages(messages)
 # 初始化问答链
 #可能需要把对话模型化成Huggingface上的模型
 model = ChatOpenAI(temperature=0.1,max_tokens=2048) #语言模型可改变
-qachain1 = ConversationalRetrievalChain.from_llm(model,retriever,combine_docs_chain_kwargs={'prompt':prompt},return_source_documents=True) #用来做检索式的对话
+# print(retriever)
+qachain1 = ConversationalRetrievalChain.from_llm(model,retriever,combine_docs_chain_kwargs={'prompt':prompt},return_source_documents=True) #用来做检索式的对话 ,return_source_documents=True
+# result = qachain1({'question': "你好", 'chat_history': [("你好","你好")]})
+# print(result)
 qachain2 = LLMChain(llm=ChatOpenAI(temperature=0),prompt=PromptTemplate.from_template(system2_template)) #用来对对话打分，必须使用openai
 chat_history = []
 if os.path.exists(user):
@@ -107,9 +119,9 @@ else:
   os.mkdir(user)
   print("正在为用户创建总历史聊天窗口")
 id = 0 #创建问题对编号
-# topic = "" #初始化话题
-while True:
-  question = input('问题：')
+topic = "" #初始化话题
+def process(question):
+  # question = input('问题：')
   #####################################用来进行意图分类的代码###############################
   # if "足球" in question:
   #   topic = "足球"
@@ -138,22 +150,28 @@ while True:
   # qachain2 = LLMChain(llm=ChatOpenAI(temperature=0),prompt=PromptTemplate.from_template(system2_template))  # 用来对对话打分，必须使用openai
   # qachain3 = LLMChain(llm=ChatOpenAI(temperature=0), prompt=PromptTemplate.from_template(system2_template))
   ########################################################################
-  if question == "结束":
-    break
+  # if question == "结束":
+  #   break
   # 开始发送问题 chat_history 为必须参数,用于存储对话历史
   result = qachain1({'question': question, 'chat_history': chat_history})
   chat_history.append((question, result['answer']))
+  reply = result['answer']
   print("AI回复:" + result['answer'])
+  AI_reply = "AI回复:" + result['answer']
   print(result)
+  print(result['source_documents'])
+  docuement_source = result['source_documents'][0]
   print(result['source_documents'][0])
   score = qachain2.run({"query":question,'answer':result['answer']})
   pattern = re.search(r'\d+', score)
   score = int(pattern.group())
   print("本次回复AI判定得分:" + str(score))
+  AI_com = "本次回复AI判定得分:" + str(score)
   # 拿到所有的question进行比较，选取相似度最高的三个，返回对应的问答
   # 下面应该保存为json格式
-  if score > 7 :
+  if score >= 7 :
     if os.path.exists(f"././{user}/{user}.jsonl"):
+      id = 0
       data = {
         "question": question,
         "answer": result["answer"],
@@ -176,11 +194,12 @@ while True:
       print("似乎没有创建问答数据库，正在创建问答数据库")
       os.mkdir(f"./{user}_query_storage")
       with open(f"./{user}/{user}.jsonl","a+",encoding='utf-8') as file:
+        id = 0
         data = {
           "question": question,
           "answer": result["answer"],
           "score": str(score),
-          "id": str(id)
+          "id": 0
         }
         json.dump(data, file,ensure_ascii = False)
         file.write("\n")
@@ -197,18 +216,28 @@ while True:
       print("正在再次连接问答数据库")
     else:
       print("似乎没有创建问答数据库")
-      break
+      first_encode(f"./{user}/{user}.jsonl", api_key, user)
     chroma_client = chromadb.Client(Settings(
       chroma_db_impl="duckdb+parquet",
       persist_directory=f"./{user}_query_storage"  # Optional, defaults to .chromadb/ in the current directory
     ))
     collection = chroma_client.get_collection(name=user + "collection")
-    embedding = openai.Embedding.create(input = question, model="text-similarity-ada-001")['data'][0]['embedding']
+    embeddings = OpenAIEmbeddings()
+    embedding = embeddings.embed_query(question)
+    # embedding = openai.Embedding.create(input = question, model="text-embedding-ada-002")['data'][0]['embedding']
     results = collection.query(
       query_embeddings = embedding,
       n_results=1
     )
     print(results)
+  return AI_reply + '\n' + AI_com
+#   result_ultimate = AI_reply + "\n" + AI_com + '\n'
+#   return result_ultimate
+# #
+#
+#
+interface = gradio.Interface(fn=process, inputs="text", outputs="text")
+interface.launch()
 
 
 
